@@ -1,0 +1,65 @@
+---
+title: "6ARMarkdown Document"
+author: "Mary White"
+date: "6/17/2020"
+output: pdf_document
+toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+```{r}
+str(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Heading: Bullet Point
+- Bullet point 1
+- Bullet point 2
+  - Sub-bullet point 1
+  - Sub-bullet point 2
+  
+1. Number 1
+2. Number 2
+3. Number 3
+
+Header 1: # Header 1
+## Stargazer
+```{r}
+library(stargazer)
+stargazer(mtcars[1:5, 1:5], summary = FALSE, type = "text")
+```
+## Knitr
+```{r, echo = TRUE, results = 'asis'}
+library(knitr)
+kable(mtcars[1:5, 1:5], caption = "A knitr kable.")
+```
+```{r, fig.align = 'center', echo = FALSE}
+ knitr::include_graphics("C:/Users/Mary/Documents/GOV 355M/R/panel_lifeexp.png", dpi = 600)
+```
+
+![Caption here](C:/Users/Mary/Documents/GOV 355M/R/panel_lifeexp.png)
+
+![hello](C:/Users/Mary/Pictures/Camera Roll/WIN_20200130_19_12_14_Pro.jpg)
+
+
