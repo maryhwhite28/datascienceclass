@@ -44,6 +44,7 @@ inequality_data_subbrazil <- filter(inequality_data_subset, country == "Brazil")
 print(inequality_data_subbrazil)
 ```
 It is better to have a lower inequality_gini score, as Brazil's is much higher than Denmark and Sweden's. 
+
 ```{r}
 #Use head command to look at inequality_data 
 head(inequality_data)
