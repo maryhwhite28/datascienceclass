@@ -1,0 +1,136 @@
+---
+title: "Exam 2"
+author: "Mary White"
+date: "6/26/2020"
+output:   
+    pdf_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo = FALSE}
+#clear environment
+rm(list=ls(all=TRUE))
+# set the working directory
+setwd("C:/Users/Mary/Documents/GOV 355M/R")
+```
+```{r}
+#Load inequality dataset
+library(rio)
+inequality_data <- import("inequality.xlsx")
+```
+This dataset is cross-sectional because it only has data for one year, 2015.
+```{r}
+#Show year is only 2015
+summary(inequality_data)
+#Min and Max year are both 2015
+```
+```{r}
+#Using the subset command, provide theinequality_gini scores for Denmark and Sweden
+library(dplyr)
+inequality_data_subset <- subset(inequality_data, select = c("country",
+                                                             "inequality_gini"))
+#filter subset for Denmark
+inequality_data_subdenmark <- filter(inequality_data_subset, country == "Denmark")
+print(inequality_data_subdenmark)
+#Filter subset for Sweden 
+inequality_data_subsweden <- filter(inequality_data_subset, country == "Sweden")
+print(inequality_data_subsweden)
+#Filter subset for Brazil
+inequality_data_subbrazil <- filter(inequality_data_subset, country == "Brazil")
+print(inequality_data_subbrazil)
+```
+It is better to have a lower inequality_gini score, as Brazil's is much higher than Denmark and Sweden's. 
+```{r}
+#Use head command to look at inequality_data 
+head(inequality_data)
+#Write accent remove function
+accent.remove <- function(x)
+{
+  old1 <- "ú"
+  new1 <- "u"
+  x1 <- chartr(old1, new1, x)
+}
+inequality_data$country <- accent.remove(inequality_data$country)
+#run head again to show change
+head(inequality_data)
+#Sort data by lowest inequality scores
+inequality_data <- inequality_data[order(inequality_data$inequality_gini),]
+#run head to show top 5 countries with lowest scores
+head(inequality_data)
+#Calculate mean inequality_gini score
+mean(inequality_data$inequality_gini, na.rm = TRUE)
+#Create dummy variables for high inequality and low inequality
+inequality_data$high_inequality = NA
+inequality_data$high_inequality <- ifelse(inequality_data$inequality_gini > 36.81375,
+                                          "1", "0")
+inequality_data$low_inequality = NA
+inequality_data$low_inequality <- ifelse(inequality_data$inequality_gini < 36.81375,
+                                          "1", "0")
+
+#Create a cross-tabulation btwn high and low inequality and inequality_gini
+library(doBy)
+summaryBy(inequality_gini ~ (high_inequality & low_inequality), data = inequality_data,
+          FUN = c(mean,length))
+```
+```{r}
+#for loop of institutions
+orgs <- c('World Bank', 'African Development Bank', 
+          'Bill and Melinda Gates Foundation')
+for(i in orgs){
+  print(i)
+}
+```
+For 14, I picked access to electricity as my variable because I thought that in countries with more inequality, smaller parts of the population will have access to electrcitity as a luxury item. 
+```{r}
+#import electricity access data from WDI into R
+library(WDI)
+electricity_access <- WDI(country = "all",
+                          indicator = "EG.ELC.ACCS.ZS",
+                          start = 2015, end = 2015, extra = FALSE, cache = NULL)
+#rename variable
+library(data.table)
+setnames(electricity_access, "EG.ELC.ACCS.ZS", "electricity_access")
+#merge data tables
+merged_df <- left_join(x = inequality_data, y = electricity_access,
+                       by = c("country", "year", "iso2c"))
+#remove NA values on basis of inequality_gini and electricity_access
+library(dplyr)
+merged_df <-
+    merged_df %>%
+    dplyr::filter(!(inequality_gini == "NA"))
+merged_df <-
+    merged_df %>%
+    dplyr::filter(!(electricity_access == "NA"))
+#use filter to keep inequality_gini scores above 30
+data_greater_30 <-
+    merged_df %>%
+    dplyr::filter((inequality_gini > 30))
+#Using data_greater_30, use R to count how many countries have the sequence “ai”in their name.
+grep("ai", data_greater_30)
+#Use apply to take the sum of inequality_gini in data_greater_30
+data_greater_30_a <- sapply(data_greater_30$inequality_gini, sum)
+print(data_greater_30_a)
+```
+```{r}
+#Label variables
+library(labelled)
+names(merged_df) #see variables u need to rename
+var_label(merged_df) <- list(`iso2c` = "ISO-2 Country Code",
+                             `country` = "Country",
+                             `inequality_gini` = "Inequality Score",
+                             `year` = "Year",
+                             `high_inequality` = "High Inequality Score",
+                             `low_inequality` = "Low Inequality Score",
+                             `electricity_access` = "% of Population with Electricity")
+```
+
+```{r}
+#Save merged_df
+library(rio)
+export(merged_df, "final_data.dta")
+```
+
