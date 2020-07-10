@@ -1,0 +1,237 @@
+---
+title: "Exam3"
+author: "Mary White"
+date: "7/9/2020"
+output:   
+    pdf_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exam 3
+```{r}
+#clear environment
+rm(list=ls(all=TRUE))
+#Use thetidycensuspackage to (a) find the inequality Gini index variable explained on the last exam, 
+library(tidycensus)
+#census api key
+census_api_key("c37c9dc748882cdb481c65c5842bacde81469af4")
+#find inequality gini index variable
+v10 <- load_variables(year = 2010, "acs5")
+v15 <- load_variables(year = 2015, "acs5")
+#import in the state-level inequality Gini estimates for 2010 and 2015 in the five-year American Community Survey as a single panel dataset
+#for state level
+gini_2010 <- get_acs(geography = "state",
+                 variables =c(inequality_gini =c("B19083_001")),
+                 year = 2010)
+gini_2010$year <- 2010
+names(gini_2010)
+gini_2015 <- get_acs(geography = "state",
+                 variables =c(inequality_gini =c("B19083_001")),
+                 year = 2015)
+gini_2015$year <- 2015
+names(gini_2015)
+#combine into single dataset
+library(tidyverse)
+inequality_panel <- bind_rows(gini_2010, gini_2015)
+#rename variable
+library(data.table)
+setnames(inequality_panel, "estimate", "gini")
+setnames(inequality_panel, "NAME", "state")
+#head command
+head(inequality_panel)
+#create wide dataframe
+inequality_wide <- inequality_panel %>%
+                  pivot_wider(id_cols = c("state", "GEOID", "year"),
+                    names_from = "year",
+                    values_from = "gini",
+                    names_prefix = "year_")
+head(inequality_wide)
+#Make long 
+inequality_long <-
+        inequality_wide %>%
+        pivot_longer(cols = starts_with("year"),
+                     names_to = "year",
+                     names_prefix = "year_",
+                     values_to = "gini")
+#show same number of observations
+dim(inequality_panel)
+dim(inequality_long)
+#collapse data
+inequality_collapsed <-
+  inequality_long %>%
+  group_by(state, GEOID) %>%
+  summarize(gini = mean(gini, na.rm = TRUE))
+#load libraries for mapping 
+#load libraries
+library(rio)
+library(tidyverse)
+library(googlesheets4)
+library(labelled)
+library(data.table)
+library(varhandle)
+library(ggrepel)
+library(geosphere)
+library(rgeos)
+library(viridis)
+library(mapview)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(devtools)
+library(rnaturalearthhires) # devtools::install_github("ropensci/rnaturalearthhires")
+library(raster)
+library(sp)
+library(sf)
+library(ggsflabel) #devtools::install_github("yutannihilation/ggsflabel")
+library(Imap) #nice mapping/color functions 
+#load the world borders
+state_borders <- st_read("C:/Users/Mary/Documents/GOV 355M/R/state_borders/cb_2018_us_state_500k.shp", stringsAsFactors = FALSE)
+#transform to WGS84 format
+borders <- st_transform(state_borders, "+proj=longlat +ellps=WGS84 +datum=WGS84")
+#produce map of united states
+merged_data <- left_join(borders, inequality_collapsed, by = c("GEOID"))
+#create map
+america_map <- ggplot() + geom_sf(data = borders) +
+          geom_sf(data = merged_data, aes(fill = gini))+
+          scale_fill_viridis(option = "viridis")+
+          ggtitle("US Map of Inequality")+
+          theme(plot.title = element_text(hjust = .5))+
+          theme_void()
+print(america_map) 
+```
+
+```{r}
+#8.Use the WDI package to import in data on Gross Domestic Product (GDP) in current US dollars. 
+#load WDI library
+library(WDI)
+#get deflator data from WDI
+gdp_data <- WDI(country = "all",
+                     indicator = "NY.GDP.MKTP.CD",
+                     start = 2006, end = 2007, extra = FALSE, cache = NULL)
+#rename gdp variable
+library(data.table)
+setnames(gdp_data, "NY.GDP.MKTP.CD", "gdp_current")
+#get deflator data from WDI
+deflator_data <- WDI(country = "all",
+                     indicator = "NY.GDP.DEFL.ZS",
+                     start = 2001, end = 2017, extra = FALSE, cache = NULL)
+#Rename deflator variable
+library(data.table)
+setnames(deflator_data, "NY.GDP.DEFL.ZS", "deflator")
+#subset data to get dataframe only for US dollars 
+usd_deflator <- subset(deflator_data, country == "United States")
+#remove deflator_data
+rm(deflator_data)
+#Drop unnecessary variables
+usd_deflator$iso2c = NULL
+usd_deflator$country = NULL
+#Merge data
+deflated_data <- left_join(x = gdp_data, y = usd_deflator,
+                           by = "year")
+#do the deflation
+deflated_data$gdp_deflated <- deflated_data$gdp_current/
+                                  (deflated_data$deflator/100)
+#I picked 2015 because I wanted to see a more accurate representation of gdp
+#based on a more recent year. 
+#head command
+head(deflated_data)
+
+```
+#10. Shiny App:
+3 Main Components: 
+1. User Interface:
+Written as ui <-fluidPage() including information about inputs and outputs. 
+2. Server:
+server<- function(input, output)
+Has inputs and outputs. For Inputs, you need the inputId and label, and for outputs you only need the outputId.
+3. Call to execute shiny app
+shinyApp(ui, server)
+
+```{r}
+#Pull pdf
+library(pdftools)
+library(tidyr)
+library(tidytext)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+#import pdf file
+text <- pdf_text(pdf = "https://pdf.usaid.gov/pdf_docs/PA00TNMG.pdf")
+#create dataframe
+armeniatext <- as.data.frame(text, stringsAsFactors = FALSE)
+#tokenize and remove stop words 
+#getting stop words 
+data("stop_words")
+library(tidytext)
+armeniatext <- armeniatext %>%
+              unnest_tokens(word, text) 
+#take out stop words
+armeniatext <- armeniatext %>%
+              anti_join(stop_words)
+#top used words
+armeniatext %>%
+  count(word, sort = TRUE)
+#show top 5
+armeniatext %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 130)
+```
+```{r}
+#load Billboard hot 100
+#read data into R
+library(rvest)
+library(dplyr)
+hot100exam <- "https://www.billboard.com/charts/hot-100"
+#use rvestto obtain identify all of the nodes in the webpage
+hot100 <-read_html(hot100exam)
+#nodes
+body_nodes <- hot100 %>%
+              html_node('body') %>%
+              html_children()
+#Rank
+rank <- hot100 %>%
+        rvest::html_nodes('body') %>%
+        xml2::xml_find_all("//span[contains(@class,
+                           'chart-element__rank__number')]")%>%
+        rvest::html_text()
+#Artist
+artist <- hot100 %>%
+          rvest::html_nodes('body') %>%
+          xml2::xml_find_all("//span[contains(@class,
+                             'chart-element__information__artist')]")%>%
+          rvest::html_text()
+#Title
+title <- hot100 %>%
+  rvest::html_nodes('body') %>%
+  xml2::xml_find_all("//span[contains(@class,
+                             'chart-element__information__song')]")%>%
+  rvest::html_text()
+#LastWeek
+#Rank
+rank <- hot100 %>%
+        rvest::html_nodes('body') %>%
+        xml2::xml_find_all("//span[contains(@class,
+                           'chart-element__rank__number')]")%>%
+        rvest::html_text()
+#Artist
+artist <- hot100 %>%
+          rvest::html_nodes('body') %>%
+          xml2::xml_find_all("//span[contains(@class,
+                             'chart-element__information__artist')]")%>%
+          rvest::html_text()
+#Last Week
+lastweek <- hot100 %>%
+  rvest::html_nodes('body') %>%
+  xml2::xml_find_all("//button[contains(@class,
+                     'chart-sorter__button')],
+                     [contains@aria-pressed, 'true')")%>%
+  rvest::html_text()
+```
+
+
+
+
